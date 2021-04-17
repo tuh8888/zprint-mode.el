@@ -57,14 +57,17 @@ show a buffer if the formatting fails"
         (message "zprint failed: see %s" (buffer-name error-buffer))))
     (goto-char home)))
 
+(defun zprint-buffer ()
+  (interactive)
+  (zprint 1 (buffer-end 1)))
 
 ;;;###autoload
 (define-minor-mode zprint-mode
   "Minor mode for reformatting Clojure(Script) code using zprint"
   :lighter " zprint"
   (if zprint-mode
-      (add-hook 'before-save-hook 'zprint nil t)
-    (remove-hook 'before-save-hook 'zprint t)))
+      (add-hook 'before-save-hook 'zprint-buffer nil t)
+    (remove-hook 'before-save-hook 'zprint-buffer t)))
 
 (provide 'zprint-mode)
 
