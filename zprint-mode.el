@@ -31,56 +31,31 @@
 (defconst zprint-mode-dir (if load-file-name (file-name-directory load-file-name) default-directory))
 
 ;;;###autoload
-(defun zprint (&optional is-interactive)
+(defun zprint (b e &optional display-error-buffer)
   "Reformat code using zprint.
 If region is active, reformat it; otherwise reformat entire buffer.
 When called interactively, or with prefix argument IS-INTERACTIVE,
 show a buffer if the formatting fails"
-  (interactive)
-  (let* ((b (if mark-active (min (point) (mark)) (point-min)))
-         (e (if mark-active (max (point) (mark)) (point-max)))
-         (in-file (make-temp-file "zprint"))
-         (err-file (make-temp-file "zprint"))
-         (out-file (make-temp-file "zprint"))
-         (contents (buffer-substring-no-properties b e))
-         (_ (with-temp-file in-file (insert contents))))
+  (interactive "r")
+  (let ((home (point))
+        (b (if (region-active-p) b 1))
+        (e (if (region-active-p) e (buffer-end 1)))
+        (error-buffer (get-buffer-create "*zprint-mode errors*")))
+    (with-current-buffer error-buffer
+      (read-only-mode 0)
+      (erase-buffer))
+    (let ((retcode (shell-command-on-region b e "zprint"
+                                            nil
+                                            t
+                                            error-buffer
+                                            display-error-buffer)))
+      (with-current-buffer error-buffer
+        (special-mode))
+      (if (eq retcode 0)
+          (message "zprint applied")
+        (message "zprint failed: see %s" (buffer-name error-buffer))))
+    (goto-char home)))
 
-    (unwind-protect
-        (let* ((error-buffer (get-buffer-create "*zprint-mode errors*"))
-               (retcode
-                (with-temp-buffer
-                  (call-process "bash"
-                                nil
-                                (list (current-buffer) err-file)
-                                nil
-                                (concat zprint-mode-dir
-                                        (file-name-as-directory "bin")
-                                        "wrap-zprint")
-                                in-file
-                                out-file))))
-          (with-current-buffer error-buffer
-            (read-only-mode 0)
-            (insert-file-contents err-file nil nil nil t)
-            (special-mode))
-          (if (eq retcode 0)
-              (progn
-                (if mark-active
-                    (progn
-                      ;; surely this can be done more elegantly?
-                      (when (not (string= (with-temp-buffer
-                                            (insert-file-contents out-file)
-                                            (buffer-string))
-                                          (buffer-substring-no-properties b e)))
-                        (delete-region b e)
-                        (insert-file-contents out-file nil nil nil nil)))
-                  (insert-file-contents out-file nil nil nil t))
-                (message "zprint applied"))
-            (if is-interactive
-                (display-buffer error-buffer)
-              (message "zprint failed: see %s" (buffer-name error-buffer)))))
-      (delete-file in-file)
-      (delete-file err-file)
-      (delete-file out-file))))
 
 ;;;###autoload
 (define-minor-mode zprint-mode
