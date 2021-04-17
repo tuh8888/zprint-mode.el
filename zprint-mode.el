@@ -36,15 +36,16 @@
 If region is active, reformat it; otherwise reformat entire buffer.
 When called interactively, or with prefix argument IS-INTERACTIVE,
 show a buffer if the formatting fails"
-  (interactive "r")
+  (interactive (if (region-active-p)
+                   (list (region-beginning) (region-end))
+                 (list 1 (buffer-end 1))))
   (let ((home (point))
-        (b (if (region-active-p) b 1))
-        (e (if (region-active-p) e (buffer-end 1)))
         (error-buffer (get-buffer-create "*zprint-mode errors*")))
     (with-current-buffer error-buffer
       (read-only-mode 0)
       (erase-buffer))
-    (let ((retcode (shell-command-on-region b e "zprint"
+    (let ((retcode (shell-command-on-region b e
+                                            (concat zprint-mode-dir "bin/" "wrap-zprint")
                                             nil
                                             t
                                             error-buffer
