@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-if command -v COMMAND &> /dev/null; then
+if command -v zprint &> /dev/null; then
     zprint
 else
     our_temp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t "our_temp_dir")
